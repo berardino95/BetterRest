@@ -9,47 +9,24 @@ import SwiftUI
 
 struct ContentView: View {
     
-    @State private var wakeUp = Date.now
+    @State private var wakeUp = defaultWakeUptime
     @State private var sleepAmount = 8.0
     @State private var coffeeAmount = 1
+
+    @State private var bedTimeTitle = ""
+    @State private var bedTimeMessage = ""
     
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-    @State private var showingAlert = false
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 30){
-                Text("When do you want to wake up?")
-                    .font(.headline)
-                //A Date picker that show just hour and minute
-                DatePicker("Please enter a time", selection: $wakeUp, displayedComponents: .hourAndMinute)
-                    .labelsHidden() //hide the text picker
-                
-                Text("Desired amount of sleep")
-                
-                //A stepper that show sleepAmount value formatted, it can change the value in a step from 4 to 12 with a step of 0.25 on each add or subtract
-                Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25 )
-                
-                Text("Daily coffee intake")
-                    .font(.headline)
-                
-                Stepper(coffeeAmount == 1 ? "1 cups" : "\(coffeeAmount) cups", value: $coffeeAmount, in: 1...20)
-            }
-            .padding(.horizontal, 40)
-            .navigationTitle("BetterRest")
-            .toolbar {
-                Button("calculate", action: calculateTime)
-            }
-            .alert(alertTitle, isPresented: $showingAlert){
-                Button("Ok", role: .cancel){ }
-            } message: {
-                Text(alertMessage)
-            }
-        }
+    //set a default wakeUp time to 8.00, must be declared as static.
+    //By adding the Static keyword to an object’s properties and methods we can use them without the need of creating an instance first. (note that both variables and constants can be static as well.)
+    static var defaultWakeUptime : Date {
+        var component = DateComponents()
+        component.hour = 8
+        component.minute = 0
+        
+        return Calendar.current.date(from: component) ?? Date.now
     }
     
-    func calculateTime(){
+    var sleepResults: String {
         //We need a do catch because CoreMl can throw error loading the model
         do{
             //loading the model
@@ -68,16 +45,45 @@ struct ContentView: View {
             //converting the model output in a readable value for the user
             let sleepTime = wakeUp - prediction.actualSleep
             
-            alertTitle = "Your ideal bed time is..."
-            alertMessage = (sleepTime.formatted(date: .omitted, time: .shortened))
-            
+            return "Your ideal bed time is " + (sleepTime.formatted(date: .omitted, time: .shortened))
             
         } catch {
-            alertTitle = "Error"
-            alertMessage = "Sorry there was a problem calculating our bed time."
+            return "There was an error"
         }
-        showingAlert = true
     }
+    
+    var body: some View {
+        NavigationView {
+            VStack{
+                Form{
+                    Section ("When do you want to wake up?") {
+                        //A Date picker that show just hour and minute
+                        DatePicker("Select a time", selection: $wakeUp, displayedComponents: .hourAndMinute)
+                            //.labelsHidden() //hide the text picker
+                    }
+                    
+                    Section ("Desired amount of sleep") {
+                        //A stepper that show sleepAmount value formatted, it can change the value in a step from 4 to 12 with a step of 0.25 on each add or subtract
+                        Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25 )
+                    }
+                    
+                    Section ("Daily coffee intake"){
+                        Picker("Number of cups", selection: $coffeeAmount){
+                            ForEach(1..<11, id: \.self){
+                                Text("\($0)")
+                            }
+                        }
+                    }
+                    
+                    
+                    Text(sleepResults)
+                        .font(.title3.bold())
+                }
+            }
+            .navigationTitle("BetterRest")
+        }
+    }
+
     
 }
 
